@@ -1,0 +1,21 @@
+# Core orchestration
+langgraph>=0.2.0
+
+# LLM extraction (structured outputs)
+anthropic>=0.69.0
+
+# Embeddings (Anthropic's recommended embedding partner)
+voyageai>=0.3.0
+
+# Graph database
+neo4j>=5.20.0
+
+# Schema / validation
+pydantic>=2.7.0
+
+# Config
+python-dotenv>=1.0.0
+
+# Document parsing
+pypdf>=4.2.0
+docx2txt>=0.8

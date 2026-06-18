@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONPATH=src .venv/Scripts/python.exe -c ' *)",
+      "Bash(PYTHONPATH=src .venv/Scripts/python.exe -m ingestion_agent.main --help)"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+# Secrets / config
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Data (don't commit candidate CVs)
+data/cvs/*
+!data/cvs/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
