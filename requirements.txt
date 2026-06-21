@@ -1,8 +1,11 @@
 # Core orchestration
 langgraph>=0.2.0
 
-# LLM extraction (structured outputs)
-anthropic>=0.69.0
+# LLM extraction (structured outputs, provider-agnostic via init_chat_model)
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-anthropic>=0.3.0
 
 # Embeddings (Anthropic's recommended embedding partner)
 voyageai>=0.3.0

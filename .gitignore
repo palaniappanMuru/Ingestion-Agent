@@ -12,6 +12,7 @@ venv/
 # Data (don't commit candidate CVs)
 data/cvs/*
 !data/cvs/.gitkeep
+data/*
 
 # OS
 .DS_Store

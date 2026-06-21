@@ -24,12 +24,26 @@ class IngestionState(TypedDict, total=False):
     # extract -> [{"path", "candidate_id", "cv": <ExtractedCV dict>}]
     extracted: list[dict[str, Any]]
 
+    # load_existing -> what's already in Neo4j, for cross-batch fuzzy dedup
+    existing: dict[str, Any]
+
     # deduplicate -> the unified, batch-wide graph (see GraphData)
     graph: dict[str, Any]
 
     # bookkeeping
     stats: dict[str, Any]
     errors: list[str]
+
+
+def empty_existing() -> dict[str, Any]:
+    """Shape returned by `load_existing` when there's no Neo4j data to draw on
+    (dry-run, fresh database, or a failed read)."""
+    return {
+        "skills": {},
+        "courses": {},
+        "projects_by_candidate": {},
+        "accomplishments_by_candidate": {},
+    }
 
 
 def empty_graph() -> dict[str, Any]:

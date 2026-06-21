@@ -35,10 +35,14 @@ class Settings:
     # CV source
     cv_folder: Path
 
-    # Claude / extraction
-    anthropic_api_key: str
+    # LLM / extraction — provider-agnostic via langchain's init_chat_model.
+    # extraction_model is "provider:model", e.g. "google_genai:gemini-2.5-flash"
+    # or "anthropic:claude-opus-4-8". Swap providers by changing this one value
+    # (plus the matching API key env var) — no code changes needed.
     extraction_model: str
     extraction_max_tokens: int
+    anthropic_api_key: str
+    google_api_key: str
 
     # Voyage / embeddings
     voyage_api_key: str
@@ -50,6 +54,10 @@ class Settings:
     neo4j_username: str
     neo4j_password: str
     neo4j_database: str
+
+    # Cross-batch dedup: similarity ratio (0-1) above which a new Skill/Course/
+    # Project/Accomplishment is treated as the same entity already in Neo4j.
+    dedup_fuzzy_threshold: float
 
     @classmethod
     def load(cls, *, require_secrets: bool = True) -> "Settings":
@@ -65,10 +73,17 @@ class Settings:
         if not cv_folder.is_absolute():
             cv_folder = (_PROJECT_ROOT / cv_folder).resolve()
 
+        extraction_model = os.getenv("EXTRACTION_MODEL", "google_genai:gemini-2.5-flash")
+        provider = extraction_model.split(":", 1)[0]
+        # Only require the API key for whichever provider is actually selected.
+        anthropic_api_key = getter("ANTHROPIC_API_KEY") if provider == "anthropic" else os.getenv("ANTHROPIC_API_KEY", "")
+        google_api_key = getter("GOOGLE_API_KEY") if provider == "google_genai" else os.getenv("GOOGLE_API_KEY", "")
+
         return cls(
             cv_folder=cv_folder,
-            anthropic_api_key=getter("ANTHROPIC_API_KEY"),
-            extraction_model=os.getenv("EXTRACTION_MODEL", "claude-opus-4-8"),
+            anthropic_api_key=anthropic_api_key,
+            google_api_key=google_api_key,
+            extraction_model=extraction_model,
             extraction_max_tokens=int(os.getenv("EXTRACTION_MAX_TOKENS", "8000")),
             voyage_api_key=getter("VOYAGE_API_KEY"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "voyage-3.5"),
@@ -77,4 +92,5 @@ class Settings:
             neo4j_username=getter("NEO4J_USERNAME"),
             neo4j_password=getter("NEO4J_PASSWORD"),
             neo4j_database=os.getenv("NEO4J_DATABASE", "neo4j"),
+            dedup_fuzzy_threshold=float(os.getenv("DEDUP_FUZZY_THRESHOLD", "0.85")),
         )

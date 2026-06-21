@@ -67,6 +67,40 @@ class Neo4jWriter:
                     dim=self._embedding_dim,
                 )
 
+    # -- read (cross-batch dedup) --------------------------------------------
+    def fetch_existing(self) -> dict[str, Any]:
+        """Existing Skill/Course nodes (global) and Project/Accomplishment
+        nodes (per candidate), full properties included, so a new batch can
+        fuzzy-match against what's already in the graph instead of only
+        deduping within itself, and seed a matched node's props when reused.
+        """
+        with self._driver.session(database=self._database) as session:
+            skills = session.run("MATCH (s:Skill) RETURN properties(s) AS props").data()
+            courses = session.run("MATCH (c:Course) RETURN properties(c) AS props").data()
+            projects = session.run(
+                "MATCH (c:Candidate)-[:WORKED_ON]->(p:Project) "
+                "RETURN c.candidate_id AS cid, properties(p) AS props"
+            ).data()
+            accomplishments = session.run(
+                "MATCH (c:Candidate)-[:ACHIEVED]->(a:Accomplishment) "
+                "RETURN c.candidate_id AS cid, properties(a) AS props"
+            ).data()
+
+        projects_by_candidate: dict[str, dict[str, dict]] = {}
+        for row in projects:
+            projects_by_candidate.setdefault(row["cid"], {})[row["props"]["uid"]] = row["props"]
+
+        accomplishments_by_candidate: dict[str, dict[str, dict]] = {}
+        for row in accomplishments:
+            accomplishments_by_candidate.setdefault(row["cid"], {})[row["props"]["uid"]] = row["props"]
+
+        return {
+            "skills": {row["props"]["uid"]: row["props"] for row in skills},
+            "courses": {row["props"]["uid"]: row["props"] for row in courses},
+            "projects_by_candidate": projects_by_candidate,
+            "accomplishments_by_candidate": accomplishments_by_candidate,
+        }
+
     # -- write --------------------------------------------------------------
     def write_graph(self, graph: dict[str, Any]) -> dict[str, int]:
         """Write the deduplicated batch graph. Returns counts written."""

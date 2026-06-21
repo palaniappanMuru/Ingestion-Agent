@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(PYTHONPATH=src .venv/Scripts/python.exe -c ' *)",
-      "Bash(PYTHONPATH=src .venv/Scripts/python.exe -m ingestion_agent.main --help)"
+      "Bash(PYTHONPATH=src .venv/Scripts/python.exe -m ingestion_agent.main --help)",
+      "Bash(.venv/Scripts/python -c \"import langchain_anthropic\")",
+      "Bash(.venv/Scripts/python -m pip install langchain-core langchain-anthropic)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(.venv/Scripts/python -c \"from langchain.chat_models import init_chat_model; print\\('ok'\\)\")",
+      "Bash(.venv/Scripts/python -m pip install \"langchain>=0.3.0\" langchain-google-genai)",
+      "Bash(python -c ' *)",
+      "Bash(./.venv/Scripts/python.exe -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(*)"
     ]
   }
 }

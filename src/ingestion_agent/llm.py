@@ -1,16 +1,25 @@
-"""Claude-backed CV extraction using structured outputs.
+"""LLM-backed CV extraction using structured outputs.
 
 One call per CV: the raw text goes in, a schema-validated `ExtractedCV` comes
-out. We use `client.messages.parse(..., output_format=ExtractedCV)` so the model
-is constrained to our Pydantic schema and we never hand-parse JSON.
+out. We use LangChain's `init_chat_model(...).with_structured_output(ExtractedCV)`
+so the model is constrained to our Pydantic schema and we never hand-parse JSON.
+
+The provider is whatever `Settings.extraction_model` says (e.g.
+"google_genai:gemini-2.5-flash" or "anthropic:claude-opus-4-8") — switching
+providers is a one-line config change, not a code change.
 """
 
 from __future__ import annotations
 
-import anthropic
+from langchain.chat_models import init_chat_model
 
 from .config import Settings
 from .models import ExtractedCV
+
+_PROVIDER_API_KEYS = {
+    "anthropic": "anthropic_api_key",
+    "google_genai": "google_api_key",
+}
 
 _SYSTEM_PROMPT = """\
 You are an expert technical recruiter and information-extraction engine. You are \
@@ -38,19 +47,30 @@ _USER_TEMPLATE = "Extract the structured profile from this CV:\n\n<cv>\n{cv_text
 class CVExtractor:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        provider = settings.extraction_model.split(":", 1)[0]
+        api_key_field = _PROVIDER_API_KEYS.get(provider)
+        api_key = getattr(settings, api_key_field) if api_key_field else None
+        base_llm = init_chat_model(
+            settings.extraction_model,
+            max_tokens=settings.extraction_max_tokens,
+            api_key=api_key,
+        )
+
+        # with_structured_output must be applied to the chat model before with_retry,
+        # since RunnableRetry (the wrapper with_retry returns) has no with_structured_output.
+        self._structured_llm = base_llm.with_structured_output(ExtractedCV).with_retry(
+            retry_if_exception_type=(Exception,),
+            stop_after_attempt=5,
+            wait_exponential_jitter=True,
+        )
 
     def extract(self, cv_text: str) -> ExtractedCV:
-        response = self._client.messages.parse(
-            model=self._settings.extraction_model,
-            max_tokens=self._settings.extraction_max_tokens,
-            system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": _USER_TEMPLATE.format(cv_text=cv_text)}],
-            output_format=ExtractedCV,
+        result = self._structured_llm.invoke(
+            [
+                ("system", _SYSTEM_PROMPT),
+                ("user", _USER_TEMPLATE.format(cv_text=cv_text)),
+            ]
         )
-        parsed = response.parsed_output
-        if parsed is None:
-            raise RuntimeError(
-                f"Extraction returned no parsed output (stop_reason={response.stop_reason})."
-            )
-        return parsed
+        if not isinstance(result, ExtractedCV):
+            raise RuntimeError(f"Extraction returned unexpected type: {type(result)!r}")
+        return result
